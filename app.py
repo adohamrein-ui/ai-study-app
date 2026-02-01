@@ -2,90 +2,69 @@ import streamlit as st
 import google.generativeai as genai
 import os
 
+st.title("🛠 マナブくん診断モード")
+
 # ==========================================
-# 【修正版】鍵の設定エリア
+# 1. 鍵のチェック（画面に見せます）
 # ==========================================
 api_key = None
-
-# 1. まず「Secrets（クラウドの金庫）」に鍵があるか確認
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
+    st.success("✅ クラウドの金庫(Secrets)から鍵を取り出しました！")
 except:
-    pass
+    # PC用の設定（もしPCで動かすならここを書き換える）
+    # api_key = "AIzaSy..." 
+    st.warning("⚠️ Secretsが見つかりません。PC設定を見に行きます。")
 
-# 2. なければ、直接コードに書かれた鍵を使う（PC用）
 if not api_key:
-    # ★重要：PCで動かす時は、下の "AIza..." を自分のキーに書き換えてね！
-    api_key = "AIzaSy..." 
+    st.error("❌ APIキーがありません！設定を確認してください。")
+    st.stop()
 
-# 3. それでも鍵がなければ、画面に「鍵がないよ！」と出す
-if not api_key or api_key == "AIzaSyBkk7vuX9__QhGCXAQNRi_2ieEZInRxSXo":
-    st.error("⚠️ APIキーが見つかりません！PCで動かす場合はコード内の 'AIzaSy...' を自分のキーに書き換えてください。クラウドの場合はSecretsを設定してください。")
-    st.stop() # ここで止める
-
-# 鍵をセット！
+# モデル設定
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# ...（ここから下は変更なし）...
-
-# ...（ここから下は変更なし）...
+# ==========================================
+# 2. 接続テスト（画像なしで会話できるか？）
+# ==========================================
+st.write("---")
+st.write("まずは「画像なし」でテストしてみよう。")
+if st.button("マナブくん、元気？（接続テスト）"):
+    try:
+        response = model.generate_content("一言で挨拶して！")
+        st.success(f"🤖 マナブくんの返事: {response.text}")
+        st.info("🙆‍♂️ AIとの通信は成功です！鍵は合っています。")
+    except Exception as e:
+        st.error(f"❌ 通信エラー: {e}")
 
 # ==========================================
-# アプリの画面デザイン（ここは前と同じ）
+# 3. 本番テスト（画像あり）
 # ==========================================
-st.title("🎓 AI生徒 マナブくん")
-st.write("画像をアップして、解説（テキスト）を入力してね！")
+st.write("---")
+uploaded_file = st.file_uploader("問題の画像をアップロード", type=["jpg", "png", "jpeg", "webp"])
+user_explanation = st.text_area("解説を入力")
 
-# 1. 画像アップロード
-uploaded_file = st.file_uploader("問題の写真をアップロード", type=["jpg", "png", "jpeg"])
-
-# 2. 解説入力
-user_explanation = st.text_area("先生（あなた）の解説：", height=150)
-
-
-# 3. 「教える」ボタン
-# ==========================================
-if st.button("マナブくんに教える"):
-    if uploaded_file is not None and user_explanation:
+if st.button("画像付きで教える"):
+    if uploaded_file and user_explanation:
+        st.write("🔄 画像を処理中...")
         
-        # 準備中の表示
-        with st.spinner('マナブくんが画像を読んでいます...'):
-            try:
-                # 画像データを処理できる形にする
-                image_data = {'mime_type': uploaded_file.type, 'data': uploaded_file.getvalue()}
+        # 画像情報の表示（デバッグ用）
+        st.write(f"ファイル形式: {uploaded_file.type}")
+        st.write(f"ファイルサイズ: {uploaded_file.size} bytes")
 
-                # AIへの指令（プロンプト）
-                prompt = f"""
-                あなたは数学・物理・化学が苦手で、少し理屈っぽい高校生「マナブ」です。
-                ユーザーはあなたの先生です。
-                
-                1. アップロードされた「問題の画像」を見てください。
-                2. 先生の「解説テキスト」を読んでください。
-                3. 解説の中で「説明が飛躍している点」「初心者がつまづきそうな点」を見つけて、
-                   「え、先生ここわかんない。なんで〇〇が△△になるの？」とタメ口で質問してください。
-                4. もし解説が完璧なら、「なるほど！めっちゃわかった！」と褒めてください。
-                
-                先生の解説: {user_explanation}
-                """
-
-                # ★ここが変わった！ stream=True を追加
-                response = model.generate_content([prompt, image_data], stream=True)
-                
-                # 結果を表示するエリア
-                st.subheader("マナブくんの返答:")
-                
-                # ★ここも変わった！ 文字を少しずつ表示する魔法
-                response_placeholder = st.empty() # 空の箱を用意
-                full_text = "" # まだ何も喋ってない
-                
-                for chunk in response:
-                    full_text += chunk.text # 新しい言葉を足す
-                    response_placeholder.info(full_text) # 箱の中身を更新！
-
-            except Exception as e:
-                st.error(f"エラーが発生しました: {e}")
+        try:
+            image_data = {'mime_type': uploaded_file.type, 'data': uploaded_file.getvalue()}
+            
+            st.write("🔄 Geminiに送信中...")
+            response = model.generate_content(
+                ["この画像について、先生（ユーザー）がこう言っています: " + user_explanation, image_data]
+            )
+            st.success("✅ 返信が来ました！")
+            st.write(response.text)
+            
+        except Exception as e:
+            st.error(f"❌ エラー発生: {e}")
+            st.write("ヒント: iPhoneの写真は「HEIC」という形式かもしれません。スクショを撮って、そのスクショを送ってみてください。")
     else:
-        st.warning("画像と解説の両方をセットしてね！")
-
+        st.warning("画像と文字を入れてね")
         
