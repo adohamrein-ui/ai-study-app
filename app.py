@@ -19,7 +19,7 @@ if not api_key:
     api_key = "AIzaSy..." 
 
 # 3. それでも鍵がなければ、画面に「鍵がないよ！」と出す
-if not api_key or api_key == "AIzaSy...":
+if not api_key or api_key == "AIzaSyBkk7vuX9__QhGCXAQNRi_2ieEZInRxSXo":
     st.error("⚠️ APIキーが見つかりません！PCで動かす場合はコード内の 'AIzaSy...' を自分のキーに書き換えてください。クラウドの場合はSecretsを設定してください。")
     st.stop() # ここで止める
 
