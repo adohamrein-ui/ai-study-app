@@ -31,11 +31,14 @@ uploaded_file = st.file_uploader("問題の写真をアップロード", type=["
 # 2. 解説入力
 user_explanation = st.text_area("先生（あなた）の解説：", height=150)
 
+
 # 3. 「教える」ボタン
+# ==========================================
 if st.button("マナブくんに教える"):
     if uploaded_file is not None and user_explanation:
         
-        with st.spinner('マナブくんが考え中...'):
+        # 準備中の表示
+        with st.spinner('マナブくんが画像を読んでいます...'):
             try:
                 # 画像データを処理できる形にする
                 image_data = {'mime_type': uploaded_file.type, 'data': uploaded_file.getvalue()}
@@ -54,16 +57,23 @@ if st.button("マナブくんに教える"):
                 先生の解説: {user_explanation}
                 """
 
-                # AIにデータを渡して答えをもらう
-                response = model.generate_content([prompt, image_data])
+                # ★ここが変わった！ stream=True を追加
+                response = model.generate_content([prompt, image_data], stream=True)
                 
-                # 結果を表示
+                # 結果を表示するエリア
                 st.subheader("マナブくんの返答:")
-                st.info(response.text)
+                
+                # ★ここも変わった！ 文字を少しずつ表示する魔法
+                response_placeholder = st.empty() # 空の箱を用意
+                full_text = "" # まだ何も喋ってない
+                
+                for chunk in response:
+                    full_text += chunk.text # 新しい言葉を足す
+                    response_placeholder.info(full_text) # 箱の中身を更新！
 
             except Exception as e:
                 st.error(f"エラーが発生しました: {e}")
     else:
         st.warning("画像と解説の両方をセットしてね！")
-        
+
         
