@@ -3,21 +3,31 @@ import google.generativeai as genai
 import os
 
 # ==========================================
-# 【重要】ここが変わった部分です
+# 【修正版】鍵の設定エリア
 # ==========================================
-# GitHubに公開しても鍵が漏れないようにする設定
+api_key = None
+
+# 1. まず「Secrets（クラウドの金庫）」に鍵があるか確認
 try:
-    # Streamlit Cloud（本番）にいる時は、サーバーの金庫から鍵をもらう
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    api_key = st.secrets["GOOGLE_API_KEY"]
 except:
-    # 自分のPCで動かす時用
-    # ★注意：ここに直接キーを書いてGitHubに上げると、キーが無効化されます！
-    # PCでテストする時だけ自分のキーを書き、アップロード時は消すか空欄にしてください。
-    # os.environ["GOOGLE_API_KEY"] = "あなたのAPIキー"
     pass
 
-# AIモデルの準備
+# 2. なければ、直接コードに書かれた鍵を使う（PC用）
+if not api_key:
+    # ★重要：PCで動かす時は、下の "AIza..." を自分のキーに書き換えてね！
+    api_key = "AIzaSy..." 
+
+# 3. それでも鍵がなければ、画面に「鍵がないよ！」と出す
+if not api_key or api_key == "AIzaSy...":
+    st.error("⚠️ APIキーが見つかりません！PCで動かす場合はコード内の 'AIzaSy...' を自分のキーに書き換えてください。クラウドの場合はSecretsを設定してください。")
+    st.stop() # ここで止める
+
+# 鍵をセット！
+genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-1.5-flash')
+
+# ...（ここから下は変更なし）...
 
 # ==========================================
 # アプリの画面デザイン（ここは前と同じ）
